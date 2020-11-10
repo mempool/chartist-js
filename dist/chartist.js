@@ -15,7 +15,7 @@
 }(this, function () {
 
 /* Chartist.js 0.11.4
- * Copyright © 2019 Gion Kunz
+ * Copyright © 2020 Gion Kunz
  * Free to use under either the WTFPL license or the MIT license.
  * https://raw.githubusercontent.com/gionkunz/chartist-js/master/LICENSE-WTFPL
  * https://raw.githubusercontent.com/gionkunz/chartist-js/master/LICENSE-MIT
@@ -3326,6 +3326,8 @@ var Chartist = {
     showPoint: true,
     // If the line chart should draw an area
     showArea: false,
+    // If the line chart series should be stacked
+    stackedLine: false,
     // The base for the area chart that will be used to close the area shape (is normally 0)
     areaBase: 0,
     // Specify if the lines should be smoothed. This value can be true or false where true will result in smoothing using the default smoothing interpolation function Chartist.Interpolation.cardinal and false results in Chartist.Interpolation.none. You can also choose other smoothing / interpolation functions available in the Chartist.Interpolation module, or write your own interpolation function. Check the examples for a brief description.
@@ -3371,7 +3373,23 @@ var Chartist = {
    *
    */
   function createChart(options) {
-    var data = Chartist.normalizeData(this.data, options.reverseData, true);
+
+    var dataToNormalize = this.data;
+    if (options.stackedLine) {
+        var dataCopy = JSON.parse(JSON.stringify(this.data));
+        for (var i=0; i<this.data.series.length; i++) {
+            dataCopy.series[i].className = this.data.series[i].className;
+        }
+        for (var i=1; i<dataCopy.series.length; i++) {
+            for (var j=0; j<dataCopy.series[i].length; j++) {
+                dataCopy.series[i][j] += dataCopy.series[i-1][j];
+            }
+        }
+        dataCopy.series.reverse();
+        dataToNormalize = dataCopy;
+    }
+
+    var data = Chartist.normalizeData(dataToNormalize, options.reverseData, true);
 
     // Create new svg object
     this.svg = Chartist.createSvg(this.container, options.width, options.height, options.classNames.chart);
@@ -3419,9 +3437,10 @@ var Chartist = {
       });
 
       // Use series class from series data or if not set generate one
+      var relativeSeriesIndex = options.stackedLine? data.raw.series.length - 1 - seriesIndex : seriesIndex;
       seriesElement.addClass([
         options.classNames.series,
-        (series.className || options.classNames.series + '-' + Chartist.alphaNumerate(seriesIndex))
+        (series.className || options.classNames.series + '-' + Chartist.alphaNumerate(relativeSeriesIndex))
       ].join(' '));
 
       var pathCoordinates = [],
@@ -3812,7 +3831,7 @@ var Chartist = {
     var seriesGroup = this.svg.elem('g');
     var labelGroup = this.svg.elem('g').addClass(options.classNames.labelGroup);
 
-    if(options.stackBars && data.normalized.series.length !== 0) {
+    if(options.stackBars && (options.stackMode === 'accumulate' || !options.stackMode) && data.normalized.series.length !== 0) {
 
       // If stacked bars we need to calculate the high low from stacked values from each series
       var serialSums = Chartist.serialMap(data.normalized.series, function serialSums() {

@@ -72,6 +72,8 @@
     showPoint: true,
     // If the line chart should draw an area
     showArea: false,
+    // If the line chart series should be stacked
+    stackedLine: false,
     // The base for the area chart that will be used to close the area shape (is normally 0)
     areaBase: 0,
     // Specify if the lines should be smoothed. This value can be true or false where true will result in smoothing using the default smoothing interpolation function Chartist.Interpolation.cardinal and false results in Chartist.Interpolation.none. You can also choose other smoothing / interpolation functions available in the Chartist.Interpolation module, or write your own interpolation function. Check the examples for a brief description.
@@ -117,7 +119,23 @@
    *
    */
   function createChart(options) {
-    var data = Chartist.normalizeData(this.data, options.reverseData, true);
+
+    var dataToNormalize = this.data;
+    if (options.stackedLine) {
+        var dataCopy = JSON.parse(JSON.stringify(this.data));
+        for (var i=0; i<this.data.series.length; i++) {
+            dataCopy.series[i].className = this.data.series[i].className;
+        }
+        for (var i=1; i<dataCopy.series.length; i++) {
+            for (var j=0; j<dataCopy.series[i].length; j++) {
+                dataCopy.series[i][j] += dataCopy.series[i-1][j];
+            }
+        }
+        dataCopy.series.reverse();
+        dataToNormalize = dataCopy;
+    }
+
+    var data = Chartist.normalizeData(dataToNormalize, options.reverseData, true);
 
     // Create new svg object
     this.svg = Chartist.createSvg(this.container, options.width, options.height, options.classNames.chart);
@@ -165,9 +183,10 @@
       });
 
       // Use series class from series data or if not set generate one
+      var relativeSeriesIndex = options.stackedLine? data.raw.series.length - 1 - seriesIndex : seriesIndex;
       seriesElement.addClass([
         options.classNames.series,
-        (series.className || options.classNames.series + '-' + Chartist.alphaNumerate(seriesIndex))
+        (series.className || options.classNames.series + '-' + Chartist.alphaNumerate(relativeSeriesIndex))
       ].join(' '));
 
       var pathCoordinates = [],
