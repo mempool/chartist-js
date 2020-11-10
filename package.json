@@ -1,5 +1,5 @@
 {
-  "name": "chartist",
+  "name": "@mempool/chartist",
   "title": "Chartist.js",
   "description": "Simple, responsive charts",
   "version": "0.11.4",
